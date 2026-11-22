@@ -1,6 +1,8 @@
 /*
 *Author: Mikey johnston
 *Desc: make up to 50 fractal images and combines them into a movie
+*Notes: after several try and error, a full restart was done hence the 2 monicker
+*
 *
 */
 
@@ -16,6 +18,8 @@
 #include <sys/wait.h>
 
 int main(int argc,char *argv[] ){
+    //variable for the fractel images
+    //current state just alter scale and name
     char c;
     const char *outfile = "mandel1.bmp";
 	double xcenter =  0.286932;
@@ -25,8 +29,9 @@ int main(int argc,char *argv[] ){
 	int    image_height = 500;
 	int    max = 1000;
     //processors
+    //given processes as arguements
     int procs = 1;
-    
+    //just stole getopt from mandel program
     while((c = getopt(argc,argv,"x:y:s:W:H:m:o:h:p:"))!=-1) {
         switch(c) {
 			case 'x':
@@ -64,8 +69,11 @@ int main(int argc,char *argv[] ){
     int frams = 100;
     //double scale_step = 0.04080612244;
     double scale_step = 0.0202;
+
+
     while (frames_started < frams) {
         // dont exceed given process amount
+        // will wait for current process to end instead of starting another
         if (active_children >=procs) {
             wait(NULL);
             active_children--;
@@ -73,7 +81,9 @@ int main(int argc,char *argv[] ){
         //changing arguements filename (mandel(x).bmp and the scale going from 2 to 0.0002)
         char filename[64];
         char scale_str[32];
-
+        //need string to give as arguments but also have it be variable number
+        //snprintf allows this
+        //snprintf(char target[], sizeof(target),string, varaibles, ...);
         snprintf(filename, sizeof(filename), "mandel%d.bmp", frames_started+1);
         snprintf(scale_str, sizeof(scale_str), "%lf", scale);
 
@@ -87,26 +97,31 @@ int main(int argc,char *argv[] ){
         if (pid == 0) {
             //set argurment
             char *args[] = {
-                "./mandel",
-                "-x 0.286932 -y 0.014287", //set x, y
-                "-s", scale_str,
-                "-o", filename,
+                "./mandel", //file path (run this progam)
+                "-x 0.286932 -y 0.014287", //set x, y flags
+                "-s", scale_str, // set scale flag
+                "-o", filename, // set file flag
                 NULL
             };
             //call ./mandel with give arguments.
+            //execvp to just give arguments instead of setting in call (ie execl)
             execvp(args[0], args);
             
             //execvp should terminate the child unless it fails
             perror("execvp failed");
-            exit(1);
+            return 0;
         } else {
+            //lets know a frame is currently being made
             active_children++;
+            //lets know frame has been started
             frames_started++;
             
-            //steps down scale
+            //steps down scale by (2 - 0.0002)/99
             scale -= scale_step;
         }
     }
+
+    //cleanup
     while (active_children > 0) {
         //have parent wait for childen to end before having program end
         wait(NULL);
