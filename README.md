@@ -20,6 +20,6 @@ runtime against the number of processers given
 xychart-beta
     title "Runtime per threads"
     x-axis "Threads" [1, 2, 5, 10, 20]
-    y-axis "Runtime (s)" 0 --> 50
+    y-axis "Runtime (s)" 0 --> 2
     line [1.976, 1.645, 1.327, 1.111, 0.664]
 ```
