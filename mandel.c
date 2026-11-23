@@ -7,10 +7,23 @@
 #include <math.h>
 #include <errno.h>
 #include <string.h>
+#include <pthread.h>
+
+typedef struct threadArgs{
+	struct bitmap *bm;
+	double xmin;
+	double xmax;
+	double ymin;
+	double ymax;
+	int max;
+	int lcv;
+	int threads;
+} threadArgs;
 
 int iteration_to_color( int i, int max );
 int iterations_at_point( double x, double y, int max );
-void compute_image( struct bitmap *bm, double xmin, double xmax, double ymin, double ymax, int max );
+//void compute_image( struct bitmap *bm, double xmin, double xmax, double ymin, double ymax, int max );
+void* compute_image(void* args);
 
 void show_help()
 {
@@ -44,11 +57,13 @@ int main( int argc, char *argv[] )
 	int    image_width = 500;
 	int    image_height = 500;
 	int    max = 1000;
+	//
+	int threads = 1;
 
 	// For each command line argument given,
 	// override the appropriate configuration value.
 
-	while((c = getopt(argc,argv,"x:y:s:W:H:m:o:h"))!=-1) {
+	while((c = getopt(argc,argv,"x:y:s:W:H:m:o:h:t:"))!=-1) {
 		switch(c) {
 			case 'x':
 				xcenter = atof(optarg);
@@ -74,6 +89,9 @@ int main( int argc, char *argv[] )
 			case 'h':
 				show_help();
 				exit(1);
+			case 't':
+                threads = atoi(optarg);
+                break;
 				break;
 		}
 	}
@@ -88,8 +106,38 @@ int main( int argc, char *argv[] )
 	bitmap_reset(bm,MAKE_RGBA(0,0,255,0));
 
 	// Compute the Mandelbrot image
-	compute_image(bm,xcenter-scale,xcenter+scale,ycenter-scale,ycenter+scale,max);
+	////compute_image(bm,xcenter-scale,xcenter+scale,ycenter-scale,ycenter+scale,max);
+	// Compute the image with threads
+	/*pthread_t thread1;
+	threadArgs tArgs;
+	tArgs.bm = bm;
+	tArgs.xmin = xcenter-scale;
+	tArgs.xmax = xcenter+scale;
+	tArgs.ymin = ycenter-scale;
+	tArgs.ymax = ycenter+scale;
+	tArgs.max = max;
 
+	pthread_create(&thread1,NULL,&compute_image, (void*) &tArgs);
+	pthread_join(thread1,NULL);*/
+	//
+	pthread_t tArray[threads];
+	threadArgs tArgs[threads];
+	for(int lcv=0;lcv<threads;lcv++){
+		tArgs[lcv].bm = bm;
+		tArgs[lcv].xmin = xcenter-scale;
+		tArgs[lcv].xmax = xcenter+scale;
+		tArgs[lcv].ymin = ycenter-scale;
+		tArgs[lcv].ymax = ycenter+scale;
+		tArgs[lcv].max = max;
+		tArgs[lcv].lcv = lcv;
+		tArgs[lcv].threads = threads;
+
+		pthread_create(&tArray[lcv],NULL,&compute_image, (void*) &tArgs[lcv]);
+	}
+	for(int lcv=0;lcv<threads;lcv++){
+		pthread_join(tArray[lcv],NULL);
+	}
+	//
 	// Save the image in the stated file.
 	if(!bitmap_save(bm,outfile)) {
 		fprintf(stderr,"mandel: couldn't write to %s: %s\n",outfile,strerror(errno));
@@ -104,8 +152,52 @@ Compute an entire Mandelbrot image, writing each point to the given bitmap.
 Scale the image to the range (xmin-xmax,ymin-ymax), limiting iterations to "max"
 */
 
-void compute_image( struct bitmap *bm, double xmin, double xmax, double ymin, double ymax, int max )
-{
+void* compute_image(void* info)
+{	
+	threadArgs *args = (threadArgs*)info;
+	struct bitmap *bm = args->bm;
+	double xmin = args->xmin;
+	double xmax = args->xmax;
+	double ymin = args->ymin;
+	double ymax = args->ymax;
+	int max = args->max;
+	int lcv = args->lcv;
+	int threads = args->threads;
+	//determine rows to be calculated
+	int step = bitmap_height(bm)/threads;
+
+	int i,j;
+
+	int width = bitmap_width(bm);
+	int height = bitmap_width(bm);
+	int stopRow = step*(lcv+1);
+	if(lcv==threads-1){
+		stopRow = bitmap_height(bm);
+	}
+	
+
+
+	// For every pixel in the image...
+
+	for(j=step*lcv;j<stopRow;j++) {
+
+		for(i=0;i<width;i++) {
+
+			// Determine the point in x,y space for that pixel.
+			double x = xmin + i*(xmax-xmin)/width;
+			double y = ymin + j*(ymax-ymin)/height;
+
+			// Compute the iterations at that point.
+			int iters = iterations_at_point(x,y,max);
+
+			// Set the pixel in the bitmap.
+			bitmap_set(bm,i,j,iters);
+		}
+	}
+}
+
+//original compute_image
+/*void compute_image( struct bitmap *bm, double xmin, double xmax, double ymin, double ymax, int max ){
 	int i,j;
 
 	int width = bitmap_width(bm);
@@ -128,7 +220,7 @@ void compute_image( struct bitmap *bm, double xmin, double xmax, double ymin, do
 			bitmap_set(bm,i,j,iters);
 		}
 	}
-}
+}*/
 
 /*
 Return the number of iterations at point x, y
