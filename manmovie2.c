@@ -25,14 +25,16 @@ int main(int argc,char *argv[] ){
 	double xcenter =  0.286932;
 	double ycenter =  0.014287;
 	double scale = 2;
-	int    image_width = 500;
-	int    image_height = 500;
-	int    max = 1000;
+	int    image_width = 10000;
+	int    image_height = 10000;
+	int    max = 10000;
     //processors
     //given processes as arguements
     int procs = 1;
+    //threads
+    int threads = 1;
     //just stole getopt from mandel program
-    while((c = getopt(argc,argv,"x:y:s:W:H:m:o:h:p:"))!=-1) {
+    while((c = getopt(argc,argv,"x:y:s:W:H:m:o:h:p:t:"))!=-1) {
         switch(c) {
 			case 'x':
 				xcenter = atof(optarg);
@@ -58,6 +60,9 @@ int main(int argc,char *argv[] ){
             case 'p':
                 procs = atoi(optarg);
                 break;
+            case 't':
+                threads = atoi(optarg);
+                break;
 		}
     }
     if(procs>50){
@@ -81,11 +86,13 @@ int main(int argc,char *argv[] ){
         //changing arguements filename (mandel(x).bmp and the scale going from 2 to 0.0002)
         char filename[64];
         char scale_str[32];
+        char thread_str[32];
         //need string to give as arguments but also have it be variable number
         //snprintf allows this
         //snprintf(char target[], sizeof(target),string, varaibles, ...);
         snprintf(filename, sizeof(filename), "mandel%d.bmp", frames_started+1);
         snprintf(scale_str, sizeof(scale_str), "%lf", scale);
+        snprintf(thread_str, sizeof(thread_str), "%d", threads);
 
         //fork and check
         pid_t pid = fork();
@@ -100,6 +107,7 @@ int main(int argc,char *argv[] ){
                 "./mandel", //file path (run this progam)
                 "-x 0.286932 -y 0.014287", //set x, y flags
                 "-s", scale_str, // set scale flag
+                "-t", thread_str, // set thread flag
                 "-o", filename, // set file flag
                 NULL
             };

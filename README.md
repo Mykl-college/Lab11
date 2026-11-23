@@ -12,3 +12,14 @@ xychart-beta
     y-axis "Runtime (s)" 0 --> 50
     line [45.332,23.441,11.535,6.718,6.053,6.093]
 ```
+# Week 12
+This section using threads to cut down the runtime of compute_image
+# stats
+runtime against the number of processers given
+```mermaid
+xychart-beta
+    title "Runtime per threads"
+    x-axis "Threads" [1, 2, 5, 10, 20]
+    y-axis "Runtime (s)" 0 --> 50
+    line [1.976, 1.645, 1.327, 1.111, 0.664]
+```
